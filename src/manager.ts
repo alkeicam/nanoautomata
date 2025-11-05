@@ -113,7 +113,7 @@ export class Automata {
      * @param {string} user originator id
      * @returns 
      */
-    async handleMessage(message: API.Message, originator: string, _user: string){
+    async process(message: API.Message, originator: string, _user: string){
         // const timer = new Stopwatch("handleMessage", true);
 
         this._logger.log(`Processing ${message.c} ${message.ctx.i}@${message.ctx.a} from ${originator}`); 
