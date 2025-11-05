@@ -25,7 +25,9 @@
     "build:minjs:esm": "terser dist/nanoautomata.esm.js --compress --mangle > dist/nanoautomata.esm.min.js",
     "build:minjs": "npm run build:minjs:esm -s && npm run build:minjs:umd -s",
     "build": "date && npm run clean && npm run build:js -s && npm run build:minjs -s && npm run build:types -s",
-    "test": "jest"        
+    "test": "jest",
+    "release-minor": "npm install && npm update && npm run build && npm run test && npm version minor && git push origin && git push origin --tags && npm publish",
+    "release-patch": "npm install && npm update && npm run build && npm run test && npm version patch && git push origin && git push origin --tags && npm publish"
   },
   "files": [    
     "dist"
