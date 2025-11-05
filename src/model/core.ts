@@ -32,7 +32,7 @@ export namespace Models {
         variants: Variants        
     }
     export interface Variants {
-        [key:string]: any
+        [key:string]: Variant
     }
 
     export interface ProcessingFail {
