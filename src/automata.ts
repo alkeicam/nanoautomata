@@ -349,7 +349,7 @@ export class Automata {
             wrapper: 'none'
         });
         
-        const executionLogs:string[] = [];
+        const executionLogs:any[] = [];
         try{
             
             if(process.env.CAPTURE_LOGS==='true'){
@@ -376,8 +376,15 @@ export class Automata {
 
                     // const logFormatted = formatLog(`${when} [${when.getTime()}] `, ...data);
                     // [${model.name}@${model.version}] it's important as this is used later on to filter logs by model so change sparigly
-                    const logFormatted = formatLog(`${Date.now()}   [${modelVersionFormatter(model.name, model.version)}]   `, ...data);
-                    executionLogs.push(logFormatted);                    
+                    const now = Date.now();
+                    const logFormatted = formatLog(...data);
+                    const logObject = {                        
+                        t: now, // timestamp
+                        s: modelVersionFormatter(model.name, model.version), // source
+                        m: logFormatted // message
+
+                    }
+                    executionLogs.push(logObject);                    
                 }
     
                 vm.on('console.log', logHander);
