@@ -1,3 +1,3 @@
 export * from "./commons"
-export * from "./manager"
+export * from "./automata"
 export * from "./model/core"
