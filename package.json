@@ -1,6 +1,6 @@
 {
   "name": "nanoautomata",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Minimal nano engine for ai automation",
   "main": "dist/nanoautomata.umd.js",
   "types": "dist/nanoautomata.d.ts",
