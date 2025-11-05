@@ -113,10 +113,33 @@ export class Automata {
      * @param {string} user originator id
      * @returns 
      */
-    async process(message: API.Message, originator: string, _user: string){
+    async process(message: API.Message, originator: string, user: string){
         // const timer = new Stopwatch("handleMessage", true);
+        if(!message.c) throw new Error(`Message code is required`);
+        if(!message.ctx){
+            message.ctx = {
+                i: `${Math.random().toString(16).substring(2,16)}`,
+                a: originator,                
+            } as API.Context
+        }
+        if(message.ctx){
+            message.ctx.ax = [],
+            message.ctx.p = []
+        }
 
-        this._logger.log(`Processing ${message.c} ${message.ctx.i}@${message.ctx.a} from ${originator}`); 
+        if(!message.u){
+            message.u = {
+                id: user
+            }
+        }
+        if(!message.d){
+            message.d = {    // debugging flaggs
+                e: false,
+                s: 0.01
+            }
+        }            
+
+        this._logger.log(`Processing ${message.c} ${message.ctx.i}@${message.ctx?.a} from ${originator}`); 
         // const timer = new Stopwatch("handleMessage", true);
         ProcessorAnnotator.annotate(message, this._instanceId, Date.now());
         // get models info (without the code)
@@ -152,9 +175,8 @@ export class Automata {
         }            
         ProcessorAnnotator.annotate(message, this._instanceId, undefined, Date.now());
 
-        message.ctx.ax = annotations || []
         // if there are annotations added by any of the model variants send annotated message to streams
-        message.ctx.ax = annotations            
+        message.ctx.ax = annotations || []                      
         this._logger.info(`Added ${annotations.length} annotations to message ${message.ctx.i} as a result of models' processing.`);        
         return message;
     }

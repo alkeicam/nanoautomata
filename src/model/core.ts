@@ -65,7 +65,7 @@ export namespace API {
         },
         d: {    // debugging flaggs
             e: boolean // when true logs of the message execution will be captured/recorded
-            s: number // sampling <0, 100> - when provided message capture will be sampled according to this ratio. 0 - disables log captures, 100 - logs will be captured for all messages
+            s: number // sampling <0, 1> - when provided message capture will be sampled according to this ratio. 0 - disables log captures, 1 - logs will be captured for all messages
         }
 
     }
