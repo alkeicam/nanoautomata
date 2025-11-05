@@ -195,7 +195,7 @@ export class Automata {
         const timer = new Stopwatch("_executeModel", true);
         // load model code
         const modelData = await this._modelProvider.getModelVariant(modelVariant.id, modelVariant.variant.variant);
-
+        
         const code = modelData.code;
         if(!code) throw new Error(`Tried to execute model variant ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} with missing code`);
         // make a copy of original message

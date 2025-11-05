@@ -10,9 +10,13 @@ export namespace Models {
 
 
     export interface ModelVariant extends ModelInfo{
-        variant: Variant;
-        
+        variant: Variant;  // model variant
     }
+
+    export interface ExecutableModelVariant extends ModelVariant{
+        code: string // model variant code
+    }
+
     export interface Variant{
         variant: string // variant id
         mode: Nanoautomata.ProcessingModes,
@@ -23,12 +27,12 @@ export namespace Models {
     }
 
     export interface Model{
-        id: string, // unique model if
+        id: string, // unique model id
         code: string // model code
     }
 
     export interface ModelInfo{
-        id: string, // unique model if
+        id: string, // unique model id
         variants: Variants        
     }
     export interface Variants {
@@ -78,7 +82,7 @@ export namespace API {
 export namespace Providers {
     export interface ModelProvider {
         getModelsInfo: ()=>Promise<Models.ModelInfo[]>
-        getModelVariant: (id: string, variantId: string)=>Promise<Models.Model>
+        getModelVariant: (id: string, variantId: string)=>Promise<Models.ExecutableModelVariant>
     }    
     export interface ModelLibrariesProvider {
         getLibraries: ()=>Promise<{
