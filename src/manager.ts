@@ -53,7 +53,7 @@ const Stopwatch = require('statman-stopwatch');
  */
 
 
-export class Manager {
+export class Automata {
     _modelProvider: Providers.ModelProvider;
     _apiProvider: Providers.ModelApiProvider;
     _librariesProvider: Providers.ModelLibrariesProvider;
@@ -73,7 +73,7 @@ export class Manager {
     
 
     static async create(modelProvider: Providers.ModelProvider, apiProvider: Providers.ModelApiProvider, librariesProvider: Providers.ModelLibrariesProvider,  instanceId: string, executionLogsSink: Nanoautomata.ExecutionLogsSink,  logger: Nanoautomata.Logger){                
-        const manager = new Manager();  
+        const manager = new Automata();  
         manager._instanceId = instanceId;
         manager._modelProvider = modelProvider;  
         manager._logger = logger || console;
