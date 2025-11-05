@@ -241,7 +241,7 @@ export class Automata {
             this._logger.log(`Model ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} [${modelVariant.variant.mode}] for event ${message.ctx.i} executed with termination result ${result.termination.code}. Took ${timer.stop()} ms.`);
 
             // send model execution logs (if any)            
-            this._logsSink.consume(model.logs)            
+            this._logsSink?.consume(model.logs)            
 
                                   
             const modelVersionString = modelVersionFormatter(model.name, model.version);
@@ -339,7 +339,7 @@ export class Automata {
         }        
         return wrapper();      
         `        
-        const consoleMode = process.env.CAPTURE_LOGS==='true'?'redirect':'inherit';        
+        const consoleMode = this._logsSink?'redirect':'inherit';        
         const vm = new NodeVM({
             console: consoleMode,
             // todo make it also possible to redirect to events and show in gui 
@@ -352,7 +352,7 @@ export class Automata {
         const executionLogs:any[] = [];
         try{
             
-            if(process.env.CAPTURE_LOGS==='true'){
+            if(this._logsSink){
                 
                 const formatLog = (...input:any[]) => {
                     const formatted:string = input.map((arg:any) => {
@@ -402,7 +402,7 @@ export class Automata {
             // 3. env variable CAPTURE_LOGS must be set to true
 
             if( 
-                process.env.CAPTURE_LOGS==='true'
+                this._logsSink
                 && model.message.d && model.message.d.e       
                 && executionLogs.length > 0
             ){
