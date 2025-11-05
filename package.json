@@ -1,0 +1,66 @@
+{
+  "name": "nanoautomata",
+  "version": "1.0.0",
+  "description": "Minimal nano engine for ai automation",
+  "main": "dist/nanoautomata.umd.js",
+  "types": "dist/nanoautomata.d.ts",
+  "module": "dist/nanoautomata.esm.min.js",
+  "keywords": [
+    "ai",
+    "agentic",
+    "workflow",
+    "nano"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/nanoautomata.umd.min.js",
+      "import": "./dist/nanoautomata.esm.min.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist/*",    
+    "build:types": "tsc -t esnext --moduleResolution node -d --emitDeclarationOnly --outFile dist/nanoautomata.d.ts src/nanoautomata.ts",
+    "build:js": "rollup -c rollup.config.js",    
+    "build:minjs:umd": "terser dist/nanoautomata.umd.js --compress --mangle > dist/nanoautomata.umd.min.js",
+    "build:minjs:esm": "terser dist/nanoautomata.esm.js --compress --mangle > dist/nanoautomata.esm.min.js",
+    "build:minjs": "npm run build:minjs:esm -s && npm run build:minjs:umd -s",
+    "build": "date && npm run clean && npm run build:js -s && npm run build:minjs -s && npm run build:types -s",
+    "test": "jest"        
+  },
+  "files": [    
+    "dist"
+  ],
+  "author": "Execon",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.0.2",
+    "vm2": "3.9.11",
+    "statman-stopwatch": "2.18.1",
+    "simple-statistics": "^7.8.3"    
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "15.2.3",
+    "@rollup/plugin-typescript": "^6.1.0",    
+    "@types/diff": "^5.0.1",    
+    "@types/node": "20.5.0",    
+    "@typescript-eslint/eslint-plugin": "4.6.1",
+    "@typescript-eslint/parser": "4.6.1",
+    "axios": "^1.7.7",
+    "eslint": "7.12.1",
+    "js-confuser": "1.7.1",    
+    "prettier": "^2.8.8",
+    "pretty-quick": "^3.1.3",
+    "rimraf": "^5.0.5",
+    "rollup": "^2.79.1",
+    "shell-exec": "1.1.2",
+    "source-map-support": "^0.5.21",
+    "terser": "^5.19.2",
+    "ts-node": "10.8.2",
+    "tslib": "^2.6.2",
+    "typedoc": "^0.25.1",
+    "typescript": "^5.1.6",
+    "@types/jest": "29.5.14",
+    "ts-jest": "29.2.5"    
+
+  }
+}
