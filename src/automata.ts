@@ -95,12 +95,12 @@ export class Automata {
         let result = modelVariants;
         // select variants matching mode "runtime" or "test"
         result = result.filter(item=>item.variant.mode == mode)
-        // make sure the sampling ration is positive
-        result = result.filter(item=>item.variant.ratio>0)
+        // make sure the sampling ration is positive or is not provided (in such case we assume it's 1)
+        result = result.filter(item=>Number.isNaN(item.variant.ratio)?true:item.variant.ratio>0)
         // filter by channel configured on model vs channel which captured the message
-        result = result.filter(item=>message.ctx.a?item.variant.channels.includes(message.ctx.a):false)
+        result = result.filter(item=>message.ctx.a&&item.variant.channels?.length>0?item.variant.channels.includes(message.ctx.a):true)
         // when model is limited to certain event codes, select only models matching
-        result = result.filter(item=>matchAnyPattern(message.c, item.variant.events, true))
+        result = result.filter(item=>item.variant.events?.length>0?matchAnyPattern(message.c, item.variant.events, true):true)
 
         return result;
     }
@@ -165,7 +165,11 @@ export class Automata {
         // const runtimeVariants = modelVariants.filter(item=>item.variant.mode == "runtime" && item.variant.ratio>0 && item.variant.channels.includes(message.ctx.a) && (!item.variant.events || item.variant.events.trim().length==0||item.variant.events.includes(message.c)));
         const runtimeVariants = this._filterVariants(modelVariants, message, Nanoautomata.ProcessingModes.runtime);
         
+        this._logger.log(`Qualified ${runtimeVariants.length} runtime vatiants to run for ${message.c} ${message.ctx.i}.`)
+
         await this._executeVariants(runtimeVariants, message, annotations);
+
+        
         
         // handle test models/variants
         if(process.env.RUNTIME_MODEL_TESTING_ENABLED){            
