@@ -113,7 +113,7 @@ export class Automata {
      * @param {string} user originator id
      * @returns 
      */
-    async process(message: API.Message, originator: string, user: string){
+    async process(message: API.Message, originator: string, user: string, safeConfig?: any){
         // const timer = new Stopwatch("handleMessage", true);
         if(!message.c) throw new Error(`Message code is required`);
         if(!message.ctx){
@@ -167,7 +167,7 @@ export class Automata {
         
         this._logger.log(`Qualified ${runtimeVariants.length} runtime vatiants to run for ${message.c} ${message.ctx.i}.`)
 
-        await this._executeVariants(runtimeVariants, message, annotations);
+        await this._executeVariants(runtimeVariants, message, annotations, safeConfig);
 
         
         
@@ -175,7 +175,7 @@ export class Automata {
         if(process.env.RUNTIME_MODEL_TESTING_ENABLED){            
             // const testVariants = modelVariants.filter(item=>item.variant.mode == "test" && item.variant.ratio>0 && item.variant.channels.includes(message.ctx.a) && (item.variant.events?.trim().length==0||item.variant.events.includes(message.c)));
             const testVariants = this._filterVariants(modelVariants, message, Nanoautomata.ProcessingModes.test);
-            await this._executeVariants(testVariants, message, annotations);            
+            await this._executeVariants(testVariants, message, annotations, safeConfig);            
         }            
         ProcessorAnnotator.annotate(message, this._instanceId, undefined, Date.now());
 
@@ -185,14 +185,14 @@ export class Automata {
         return message;
     }
     
-    async _executeVariants(variants: Models.ModelVariant[], message: API.Message, annotations: API.Annotation[]){
+    async _executeVariants(variants: Models.ModelVariant[], message: API.Message, annotations: API.Annotation[], safeConfig?: any){
         const promises = []
         for(let i=0; i< variants.length; i++){
             const variant = variants[i];            
                 // todo sample message using vartiant ratio
                 const random = Math.floor(Math.random() * 100);
                 if(random<=variant.variant.ratio){
-                    promises.push(this._executeModel(variant, message));                    
+                    promises.push(this._executeModel(variant, message, safeConfig));                    
                 }                                            
         }   
         
@@ -217,7 +217,7 @@ export class Automata {
      * @param {*} message target message
      * @returns array annotations (if model has added any annotations during processing)
      */
-    async _executeModel(modelVariant: Models.ModelVariant, message: API.Message):Promise<API.Annotation[]>{
+    async _executeModel(modelVariant: Models.ModelVariant, message: API.Message, safeConfig?: any):Promise<API.Annotation[]>{
         const timer = new Stopwatch("_executeModel", true);
         // load model code
         const modelData = await this._modelProvider.getModelVariant(modelVariant.id, modelVariant.variant.variant);
@@ -230,6 +230,7 @@ export class Automata {
         const model:Models.ExecutionModel = {
             name: modelVariant.id,
             version: modelVariant.variant.variant,
+            config: safeConfig,
             // toString: ()=>{return `${modelVariant.id}@v${modelVariant.variant.variant}`},            
             message: messageCopy,
             api: await this._apiProvider.getApi(),
