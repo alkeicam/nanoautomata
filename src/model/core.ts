@@ -61,13 +61,15 @@ export namespace API {
     export interface Message {
         c: string, // message code
         ctx: Context    // processing context
-        u: { // user context (originator of the message or target of the message)
-            id: string
+        u?: { // user context (originator of the message or target of the message)
+            id?: string,
+            tenantId?: string
         },
         d: {    // debugging flaggs
             e: boolean // when true logs of the message execution will be captured/recorded
             s: number // sampling <0, 1> - when provided message capture will be sampled according to this ratio. 0 - disables log captures, 1 - logs will be captured for all messages
-        }
+        },
+        v?: any // actual payload of the message
 
     }
 
@@ -82,8 +84,8 @@ export namespace API {
 
 export namespace Providers {
     export interface ModelProvider {
-        getModelsInfo: ()=>Promise<Models.ModelInfo[]>
-        getModelVariant: (id: string, variantId: string)=>Promise<Models.ExecutableModelVariant>
+        getModelsInfo: (tenantId?: string, userId?: string)=>Promise<Models.ModelInfo[]>
+        getModelVariant: (id: string, variantId: string, tenantId?: string, userId?: string)=>Promise<Models.ExecutableModelVariant>
     }    
     export interface ModelLibrariesProvider {
         getLibraries: ()=>Promise<{

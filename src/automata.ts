@@ -129,7 +129,8 @@ export class Automata {
 
         if(!message.u){
             message.u = {
-                id: user
+                id: user,
+                tenantId: originator
             }
         }
         if(!message.d){
@@ -143,7 +144,7 @@ export class Automata {
         // const timer = new Stopwatch("handleMessage", true);
         ProcessorAnnotator.annotate(message, this._instanceId, Date.now());
         // get models info (without the code)
-        const models = await this._modelProvider.getModelsInfo();
+        const models = await this._modelProvider.getModelsInfo(message.u?.tenantId, message.u.id);
 
         const modelVariants:Models.ModelVariant[] = models.flatMap((item:Models.ModelInfo)=>{
             const items:Models.ModelVariant[] = [];            
@@ -220,7 +221,7 @@ export class Automata {
     async _executeModel(modelVariant: Models.ModelVariant, message: API.Message, safeConfig?: any):Promise<API.Annotation[]>{
         const timer = new Stopwatch("_executeModel", true);
         // load model code
-        const modelData = await this._modelProvider.getModelVariant(modelVariant.id, modelVariant.variant.variant);
+        const modelData = await this._modelProvider.getModelVariant(modelVariant.id, modelVariant.variant.variant, message.u?.tenantId, message.u?.id);
         
         const code = modelData.code;
         if(!code) throw new Error(`Tried to execute model variant ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} with missing code`);
@@ -238,7 +239,7 @@ export class Automata {
             logs: [] // used when debugging mode is enabled and captures model execution logs
         }
         try{
-            const result = await this._executeScript(model, code, {version: `${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)}`, profile: messageCopy.u.id});        
+            const result = await this._executeScript(model, code, {version: `${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)}`, profileId: messageCopy.u!.id!, tenantId: messageCopy.u!.tenantId!});        
             this._logger.log(`Model ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} [${modelVariant.variant.mode}] for event ${message.ctx.i} executed with termination result ${result.termination.code}. Took ${timer.stop()} ms.`);
 
             // send model execution logs (if any)            
@@ -293,7 +294,7 @@ export class Automata {
         return annotationsArray;            
     }
     
-    async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profile: string}){
+    async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profileId: string, tenantId: string}){
                 
         const codeWrapper = `
         async function wrapper(){                                                                   
