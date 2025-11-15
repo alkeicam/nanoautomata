@@ -297,46 +297,46 @@ export class Automata {
     async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profileId: string, tenantId: string}){
                 
         const codeWrapper = `
-        async function wrapper(){                                                                   
-            try{
-                const __result = {
-                    termination: {},
-                    raise: {},
-                    annotate: {},
-                    logs: []
+        async function wrapper(){  
+            const __result = {
+                termination: {},
+                raise: {},
+                annotate: {},
+                logs: []
+            }
+            
+            
+            model.annotate = (code, value)=>{
+                __result.annotate[code] = {
+                    v: value
                 }
-                
-                
-                model.annotate = (code, value)=>{
-                    __result.annotate[code] = {
-                        v: value
-                    }
+            }
+            model.raise = (code, value)=>{
+                __result.raise[code] = {
+                    v: value                    
+                };
+            }            
+            model.terminate = (code, reason)=>{
+                if(!code) code = "SUCCESS";                    
+                __result.termination = {
+                    code: code,
+                    reason: reason
                 }
-                model.raise = (code, value)=>{
-                    __result.raise[code] = {
-                        v: value                    
-                    };
-                }            
-                model.terminate = (code, reason)=>{
-                    if(!code) code = "SUCCESS";                    
-                    __result.termination = {
-                        code: code,
-                        reason: reason
-                    }
-                    return __result;
-                }
-                ${process.env.RUNTIME_MODEL_DISABLE_CONSOLE==="true"?`console = {
-                    log: ()=>{},
-                    warn: ()=>{},
-                    error: ()=>{},
-                    trace: ()=>{},
-                    debug: ()=>{}
-                }`:''}                  
+                return __result;
+            }
+            ${process.env.RUNTIME_MODEL_DISABLE_CONSOLE==="true"?`console = {
+                log: ()=>{},
+                warn: ()=>{},
+                error: ()=>{},
+                trace: ()=>{},
+                debug: ()=>{}
+            }`:''}                  
+            try{                
                 ${script}                
                 return model.terminate();
             }catch(error){
                 console.error("Error while executing model: ", error.stack);
-                throw error;
+                return model.terminate("ERROR", error.message);
             }
         }        
         return wrapper();      
@@ -353,49 +353,45 @@ export class Automata {
         
         const executionLogs:any[] = [];
         try{
-            
-            if(this._logsSink){
-                
-                const formatLog = (...input:any[]) => {
-                    const formatted:string = input.map((arg:any) => {
-                        if (typeof arg === 'object' && arg !== null) {
-                            // For objects, stringify with minimal formatting
-                            return Array.isArray(arg) 
-                                ? `[${arg.map((item:any) => formatLog(item)).join(', ')}]` 
-                                : `{${Object.entries(arg).map(([key, value]) => `${key}: ${formatLog(value)}`).join(', ')}}`;
-                        } else if (typeof arg === 'undefined') {
-                            return 'undefined';
-                        } else {
-                            // Convert other types to strings
-                            return String(arg);
-                        }
-                    }).join(' ');
-                    return formatted;
-                }
-                                
-                const logHander = (...data:any[])=>{                    
-                    // const when = new Date();
-
-                    // const logFormatted = formatLog(`${when} [${when.getTime()}] `, ...data);
-                    // [${model.name}@${model.version}] it's important as this is used later on to filter logs by model so change sparigly
-                    const now = Date.now();
-                    const logFormatted = formatLog(...data);
-                    const logObject = {                        
-                        t: now, // timestamp
-                        s: modelVersionFormatter(model.name, model.version), // source
-                        m: logFormatted // message
-
+            const formatLog = (...input:any[]) => {
+                const formatted:string = input.map((arg:any) => {
+                    if (typeof arg === 'object' && arg !== null) {
+                        // For objects, stringify with minimal formatting
+                        return Array.isArray(arg) 
+                            ? `[${arg.map((item:any) => formatLog(item)).join(', ')}]` 
+                            : `{${Object.entries(arg).map(([key, value]) => `${key}: ${formatLog(value)}`).join(', ')}}`;
+                    } else if (typeof arg === 'undefined') {
+                        return 'undefined';
+                    } else {
+                        // Convert other types to strings
+                        return String(arg);
                     }
-                    executionLogs.push(logObject);                    
-                }
-    
-                vm.on('console.log', logHander);
-                vm.on('console.info', logHander);
-                vm.on('console.warn', logHander);
-                vm.on('console.error', logHander);
-                vm.on('console.trace', logHander);
+                }).join(' ');
+                return formatted;
             }
+            const logHander = (...data:any[])=>{    
+                this._logger.log(...data);                
+                // const when = new Date();
 
+                // const logFormatted = formatLog(`${when} [${when.getTime()}] `, ...data);
+                // [${model.name}@${model.version}] it's important as this is used later on to filter logs by model so change sparigly
+                const now = Date.now();
+                const logFormatted = formatLog(...data);
+                const logObject = {                        
+                    t: now, // timestamp
+                    s: modelVersionFormatter(model.name, model.version), // source
+                    m: logFormatted // message
+
+                }
+                this._logsSink&&executionLogs.push(logObject);                    
+            }
+    
+            vm.on('console.log', logHander);
+            vm.on('console.info', logHander);
+            vm.on('console.warn', logHander);
+            vm.on('console.error', logHander);
+            vm.on('console.trace', logHander);
+                        
             const vmResult = await vm.run(codeWrapper);   
             // optionally we add log output to result
             // following conditions must be met to capture execution logs
@@ -410,7 +406,7 @@ export class Automata {
             ){
                 let sampling = model.message.d.s>0?Math.min(model.message.d.s,1):1;
                 if(Math.random()<=sampling){
-                    this._logger.log(`Added logs for message ${model.message.ctx.i} model ${model.name}@${model.version} with size ${executionLogs.length}`);
+                    // this._logger.log(`Added logs for message ${model.message.ctx.i} model ${model.name}@${model.version} with size ${executionLogs.length}`);
                     model.logs.push(...executionLogs);
                 } 
             }
