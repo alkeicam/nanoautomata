@@ -47,11 +47,11 @@ describe("Code generation",()=>{
             ).rejects.toThrow("Model model-id@vv1 is missing Start cell");
         });
 
-        it("builds sequential code from Start through Terminator", async () => {
-            const diagram: Visuals.Diagram = {
-                cells: [
-                    cell({
-                        id: "start",
+    it("builds sequential code from Start through Terminator", async () => {
+        const diagram: Visuals.Diagram = {
+            cells: [
+                cell({
+                    id: "start",
                         _type: "Start",
                         name: "Start",
                         _portConnections: [{ id: "rule", port: "out1" }]
@@ -78,15 +78,69 @@ describe("Code generation",()=>{
             expect(code).toContain('Processing Step "Start"');
             expect(code).toContain('Processing Step "Rule"');
             expect(normalized).toContain("model.count = 1;");
-            expect(normalized).toContain(
-                "return model.terminate(undefined, \"all good\");"
-            );
-        });
+        expect(normalized).toContain(
+            "return model.terminate(undefined, \"all good\");"
+        );
     });
 
-    describe("Decision branching", () => {
-        it("embeds both branch paths in generated code", async () => {
-            const diagram: Visuals.Diagram = {
+    it("exposes shared ctx object across generated blocks", async () => {
+        const diagram: Visuals.Diagram = {
+            cells: [
+                cell({
+                    id: "start",
+                    _type: "Start",
+                    name: "Start",
+                    _portConnections: [{ id: "rule1", port: "out1" }]
+                }),
+                cell({
+                    id: "rule1",
+                    _type: "Rule",
+                    name: "Rule",
+                    configurables: [
+                        { i: "script", v: "ctx.value = (ctx.value || 0) + 1;" }
+                    ],
+                    _portConnections: [{ id: "rule2", port: "out1" }]
+                }),
+                cell({
+                    id: "rule2",
+                    _type: "Rule",
+                    name: "Rule 2",
+                    configurables: [
+                        {
+                            i: "script",
+                            v: "model.captured = (ctx.value || 0) + 5;"
+                        }
+                    ],
+                    _portConnections: [{ id: "end", port: "out1" }]
+                }),
+                cell({
+                    id: "end",
+                    _type: "Terminator",
+                    name: "End",
+                    configurables: [{ i: "reason", v: "\"done\"" }]
+                })
+            ]
+        };
+
+        const code = await CodeGenerator.generateCode(diagram, "model", "1.0");
+        expect(code).toContain("const ctx = {}");
+
+        const runner = new Function(
+            "model",
+            "message",
+            `return (async ()=>{${code}})();`
+        );
+
+        const model: any = { terminate: jest.fn() };
+        await runner(model, {});
+
+        expect(model.captured).toBe(6);
+    });
+});
+
+describe("Decision branching", () => {
+    it("embeds both branch paths in generated code", async () => {
+        const diagram: Visuals.Diagram = {
                 cells: [
                     cell({
                         id: "start",
@@ -143,4 +197,3 @@ describe("Code generation",()=>{
     });
 
 })
-
