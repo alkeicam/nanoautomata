@@ -259,3 +259,65 @@ describe("Annotate code generation", () => {
         expect(model.annotate).toHaveBeenCalledWith("TAG", "VALUE");
     });
 });
+
+describe("Raise code generation", () => {
+    const diagramWithCondition = (condition: string): Visuals.Diagram => ({
+        cells: [
+            cell({
+                id: "start",
+                _type: "Start",
+                name: "Start",
+                _portConnections: [{ id: "raise", port: "out1" }]
+            }),
+            cell({
+                id: "raise",
+                _type: "Raise",
+                name: "Raise",
+                configurables: [
+                    { i: "code", v: "ERR" },
+                    { i: "raiseValue", v: "\"VALUE\"" },
+                    { i: "condition", v: condition }
+                ],
+                _portConnections: [{ id: "end", port: "out1" }]
+            }),
+            cell({
+                id: "end",
+                _type: "Terminator",
+                name: "End",
+                configurables: [{ i: "reason", v: "\"done\"" }]
+            })
+        ]
+    });
+
+    const runDiagram = async (diagram: Visuals.Diagram) => {
+        const code = await CodeGenerator.generateCode(diagram, "model", "1.0");
+        const runner = new Function(
+            "model",
+            "message",
+            `return (async ()=>{${code}})();`
+        );
+        const model = { raise: jest.fn(), terminate: jest.fn() };
+        await runner(model, {});
+        return model;
+    };
+
+    it("invokes raise when condition is truthy", async () => {
+        const model = await runDiagram(diagramWithCondition("true"));
+
+        expect(model.raise).toHaveBeenCalledTimes(1);
+        expect(model.raise).toHaveBeenCalledWith("ERR", "VALUE");
+    });
+
+    it("skips raise when condition is falsy", async () => {
+        const model = await runDiagram(diagramWithCondition("false"));
+
+        expect(model.raise).not.toHaveBeenCalled();
+    });
+
+    it("defaults to raise when condition content is empty", async () => {
+        const model = await runDiagram(diagramWithCondition('""'));
+
+        expect(model.raise).toHaveBeenCalledTimes(1);
+        expect(model.raise).toHaveBeenCalledWith("ERR", "VALUE");
+    });
+});
