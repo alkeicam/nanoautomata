@@ -221,14 +221,14 @@ class Decision extends CodeBlockGenerator{
         let nextGenerator = generators.find(item=>(item as any).canHandle(next));
         if(!nextGenerator) throw new Error(`Missing generator for ${next!._type}`);
         let path1 = await (nextGenerator as any).traverseCode(next, cells, generators);
-        console.log(`Got code`, path1);
+        
         // enter out2 path
         port = current._portConnections.find(item=>item.port=="out2");
         next = cells.find((item)=>{return item.id == port!.id});
         nextGenerator = generators.find(item=>(item as any).canHandle(next));
         if(!nextGenerator) throw new Error(`Missing generator for ${next!._type}`);
         let path2 = await (nextGenerator as any).traverseCode(next, cells, generators);
-        console.log(`Got code`, path2);
+        
         
         let code = `
 if(${configurables.condition}){
