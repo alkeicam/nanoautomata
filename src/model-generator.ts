@@ -16,7 +16,7 @@ class CodeBlockGenerator {
         return codeBlocks;
     }
 
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], _configurables: Visuals.CellConfigurables){
         throw new Error(`Must be implemented`);
     }
 
@@ -39,15 +39,13 @@ await (async (model, ctx)=>{
             const port = current._portConnections[i];
             if(port.port.startsWith("out")){
                 const next = cells.find((item)=>{return item.id == port.id}) 
-                const nextGenerator = generators.find(item=>item.canHandle(next!));
-                if(!nextGenerator) throw new Error(`Missing generator for ${next._type}`);
-                const result = await nextGenerator.traverseCode(next, cells, generators);
-                console.log(`Got code`, result)
+                const nextGenerator = generators.find(item=>(item as any).canHandle(next!));
+                if(!nextGenerator) throw new Error(`Missing generator for ${next!._type}`);
+                const result = await (nextGenerator as any).traverseCode(next, cells, generators);                
                 code += result ;                
             }
         }
 
-        
         return code;
     }
 
@@ -59,22 +57,22 @@ await (async (model, ctx)=>{
         return result;
     }
 
-    static _safeVariable(name){
+    static _safeVariable(name: string){
         return name.replace(/([^a-z0-9]+)/gi, 'a');
     }
-    static _randVariable(prefix){
+    static _randVariable(prefix: string){
         const v = Math.random().toString(18).substring(2, 10);
 
         return `${prefix||"_v"}_${v}`;
     }
-    static _getConfigurable(cell, key){
+    static _getConfigurable(cell: Visuals.Cell, key: string){
         const result = cell.configurables.find((i)=>{return i.i==key})||{};
         return result;
     }
 }
 
 class Terminator extends CodeBlockGenerator {
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
         return `
 // terminate with success
 return model.terminate(${!configurables.code?undefined:configurables.code}, ${configurables.reason});
@@ -83,20 +81,20 @@ return model.terminate(${!configurables.code?undefined:configurables.code}, ${co
 }
 
 class Start extends CodeBlockGenerator {
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], _configurables: Visuals.CellConfigurables){
         return `
 `  
     }
 }
 class Rule extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
     return `
 ${configurables.script}
 `
     }
 }
 class Annotate extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
         let temp1 = CodeGenerator._randVariable();
         return `
 let ${temp1} = ${configurables.condition};
@@ -113,7 +111,7 @@ if(typeof ${temp1} == "boolean" || (typeof ${temp1} !== "undefined" && ${temp1}!
 }
 
 class ProfileRead extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
     let varName = CodeGenerator._randVariable();
     return `
         let ${varName};
@@ -125,7 +123,7 @@ if(${varName}) ${configurables.variableName} = ${varName};
     }
 }
 class ProfileWrite extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
         return `
         await model.api.setProfile(${configurables.propertyName},${configurables.value});            
         `
@@ -134,7 +132,7 @@ class ProfileWrite extends CodeBlockGenerator{
 }
 
 class ListRead extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
         const varName = CodeGenerator._randVariable();
         const readConfiguration = CodeGenerator._randVariable();
         return `
@@ -155,7 +153,7 @@ class ListRead extends CodeBlockGenerator{
 }
 
 class ListWrite extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
         return `
         await model.api.setListItem(${configurables.listCode},${configurables.itemKey},${configurables.value});            
         `
@@ -164,7 +162,7 @@ class ListWrite extends CodeBlockGenerator{
 }
 
 class APICall extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], _configurables: Visuals.CellConfigurables){
         return `
                    
         `
@@ -173,7 +171,7 @@ class APICall extends CodeBlockGenerator{
 }
 
 class OCR extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], _configurables: Visuals.CellConfigurables){
         return `
                    
         `
@@ -182,7 +180,7 @@ class OCR extends CodeBlockGenerator{
 }
 
 class AIImageQuery extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], _configurables: Visuals.CellConfigurables){
         return `
                    
         `
@@ -190,7 +188,7 @@ class AIImageQuery extends CodeBlockGenerator{
     }
 }
 class ExecuteModel extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], _configurables: Visuals.CellConfigurables){
         return `
                    
         `
@@ -199,7 +197,7 @@ class ExecuteModel extends CodeBlockGenerator{
 }
 
 class Raise extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
         let temp1 = CodeGenerator._randVariable();
         return `
 let ${temp1} = ${configurables.condition};
@@ -216,20 +214,20 @@ if(typeof ${temp1} == "boolean" || (typeof ${temp1} !== "undefined" && ${temp1}!
 }
 
 class Decision extends CodeBlockGenerator{    
-    static async _process(current, cells, configurables, generators){
+    static async _process(current: Visuals.Cell, cells: Visuals.Cell[], configurables: Visuals.CellConfigurables, generators: CodeBlockGenerator[]){
         // enter out1 path
         let port = current._portConnections.find(item=>item.port=="out1");
-        let next = cells.find((item)=>{return item.id == port.id});
-        let nextGenerator = generators.find(item=>item.canHandle(next));
-        if(!nextGenerator) throw new Error(`Missing generator for ${next._type}`);
-        let path1 = await nextGenerator.traverseCode(next, cells, generators);
+        let next = cells.find((item)=>{return item.id == port!.id});
+        let nextGenerator = generators.find(item=>(item as any).canHandle(next));
+        if(!nextGenerator) throw new Error(`Missing generator for ${next!._type}`);
+        let path1 = await (nextGenerator as any).traverseCode(next, cells, generators);
         console.log(`Got code`, path1);
         // enter out2 path
         port = current._portConnections.find(item=>item.port=="out2");
-        next = cells.find((item)=>{return item.id == port.id});
-        nextGenerator = generators.find(item=>item.canHandle(next));
-        if(!nextGenerator) throw new Error(`Missing generator for ${next._type}`);
-        let path2 = await nextGenerator.traverseCode(next, cells, generators);
+        next = cells.find((item)=>{return item.id == port!.id});
+        nextGenerator = generators.find(item=>(item as any).canHandle(next));
+        if(!nextGenerator) throw new Error(`Missing generator for ${next!._type}`);
+        let path2 = await (nextGenerator as any).traverseCode(next, cells, generators);
         console.log(`Got code`, path2);
         
         let code = `
@@ -244,7 +242,7 @@ if(${configurables.condition}){
     }
 }
 class Log extends CodeBlockGenerator{
-    static _code(current, cells, configurables){
+    static _code(_current: Visuals.Cell, _cells: Visuals.Cell[], configurables: Visuals.CellConfigurables){
     return `
 // ${configurables.name}
 console.log(${configurables.value});
@@ -253,7 +251,7 @@ console.log(${configurables.value});
 }
 
 class CodeGenerator {
-    static Generators = [
+    static Generators: (typeof CodeBlockGenerator)[] = [
         Terminator,
         Start,
         Rule,
@@ -294,7 +292,7 @@ const ctx = {}
         return codeBlocks;
     }
 
-    static _randVariable(prefix:string){
+    static _randVariable(prefix?:string){
         const v = Math.random().toString(18).substring(2, 10);
 
         return `${prefix||"_v"}_${v}`;
