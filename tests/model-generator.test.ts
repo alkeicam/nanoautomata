@@ -196,4 +196,66 @@ describe("Decision branching", () => {
         });
     });
 
-})
+});
+
+describe("Annotate code generation", () => {
+    const diagramWithCondition = (condition: string): Visuals.Diagram => ({
+        cells: [
+            cell({
+                id: "start",
+                _type: "Start",
+                name: "Start",
+                _portConnections: [{ id: "annotate", port: "out1" }]
+            }),
+            cell({
+                id: "annotate",
+                _type: "Annotate",
+                name: "Annotate",
+                configurables: [
+                    { i: "code", v: "TAG" },
+                    { i: "annotationValue", v: "\"VALUE\"" },
+                    { i: "condition", v: condition }
+                ],
+                _portConnections: [{ id: "end", port: "out1" }]
+            }),
+            cell({
+                id: "end",
+                _type: "Terminator",
+                name: "End",
+                configurables: [{ i: "reason", v: "\"done\"" }]
+            })
+        ]
+    });
+
+    const runDiagram = async (diagram: Visuals.Diagram) => {
+        const code = await CodeGenerator.generateCode(diagram, "model", "1.0");
+        const runner = new Function(
+            "model",
+            "message",
+            `return (async ()=>{${code}})();`
+        );
+        const model = { annotate: jest.fn(), terminate: jest.fn() };
+        await runner(model, {});
+        return model;
+    };
+
+    it("invokes annotate when condition is truthy", async () => {
+        const model = await runDiagram(diagramWithCondition("true"));
+
+        expect(model.annotate).toHaveBeenCalledTimes(1);
+        expect(model.annotate).toHaveBeenCalledWith("TAG", "VALUE");
+    });
+
+    it("skips annotate when condition is falsy", async () => {
+        const model = await runDiagram(diagramWithCondition("false"));
+
+        expect(model.annotate).not.toHaveBeenCalled();
+    });
+
+    it("defaults to annotate when condition content is empty", async () => {
+        const model = await runDiagram(diagramWithCondition('""'));
+
+        expect(model.annotate).toHaveBeenCalledTimes(1);
+        expect(model.annotate).toHaveBeenCalledWith("TAG", "VALUE");
+    });
+});
