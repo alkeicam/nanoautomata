@@ -80,7 +80,7 @@ export class Automata {
     }
     
 
-    static async create(modelProvider: Providers.ModelProvider, apiProvider: Providers.ModelApiProvider, librariesProvider: Providers.ModelLibrariesProvider,  instanceId: string, executionLogsSink: Nanoautomata.ExecutionLogsSink,  logger: Nanoautomata.Logger){                
+    static create(modelProvider: Providers.ModelProvider, apiProvider: Providers.ModelApiProvider, librariesProvider: Providers.ModelLibrariesProvider,  instanceId: string, executionLogsSink: Nanoautomata.ExecutionLogsSink,  logger: Nanoautomata.Logger){                
         const manager = new Automata();  
         manager._instanceId = instanceId;
         manager._modelProvider = modelProvider;  
@@ -424,7 +424,7 @@ export class Automata {
             this._logger.error(`Error "${error.message}" executing model ${info.version} for message ${model.message.ctx.i}`, error.stack);
             // when there was an error we add execution logs regardless of debug settings of message
             model.logs.push(...executionLogs);
-            this._incrementCounter(error);
+            this._incrementCounter(undefined, error);
             return Promise.reject(error);
         }finally{
             // context.currentScript = {}             
@@ -435,10 +435,23 @@ export class Automata {
         if(error){
             this._counters!.errors[error.message] = this._counters!.errors[error.message] || new IntervalCounters();
             this._counters!.errors[error.message].record(1);
-        }else if(result){
+        }
+        if(result){
             const code = result.termination.code;
             this._counters!.termination[code] = this._counters!.termination[code] || new IntervalCounters();
-            this._counters!.termination[code].record(1);            
+            this._counters!.termination[code].record(1);   
+            
+            // for each annotation raised we also increment counters
+            if(result.annotate){
+                Object.keys(result.annotate).forEach((key)=>{
+                    this._counters!.annotate[key] = this._counters!.annotate[key] || new IntervalCounters();
+                    this._counters!.annotate[key].record(1);   
+                })                
+            }
         }
+    }
+
+    getCounters(){
+        return JSON.parse(JSON.stringify(this._counters));
     }
 }
