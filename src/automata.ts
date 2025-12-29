@@ -1,6 +1,8 @@
 const {NodeVM} = require("vm2");
-import {API, Models, Nanoautomata, Providers} from "./model/core"
+import {API, Counters, Models, Nanoautomata, Providers} from "./model/core"
 import { ModelError, ProcessorAnnotator, matchAnyPattern, modelVersionFormatter } from "./commons";
+import { generateId, IntervalCounters } from "./commons";
+
 // import {generateContextId, ProcessorAnnotator, modelVersionFormatter, matchAnyPattern} = require('@archimedes/adi-ms-common');
 // const {generateContextId, ProcessorAnnotator, modelVersionFormatter, matchAnyPattern} = require('../common/src');
 
@@ -61,14 +63,20 @@ export class Automata {
 
     _instanceId: string;
     _logger: any;
+    // 
+    _counters?: Counters.ExecutionCounter;
 
     constructor(){        
         this._modelProvider = {} as Providers.ModelProvider;
         this._apiProvider = {} as Providers.ModelApiProvider;
         this._librariesProvider = {} as Providers.ModelLibrariesProvider;
         this._logsSink = {} as Nanoautomata.ExecutionLogsSink;
-        this._instanceId = ""
-
+        this._instanceId = generateId(18);
+        this._counters = {
+            termination: {},
+            annotate: {},
+            errors: {}
+        };
     }
     
 
@@ -258,7 +266,7 @@ export class Automata {
         }catch(error:any){
             
             // append model execution logs (if any) to message context
-            this._logsSink.consume(model.logs);
+            this._logsSink?.consume(model.logs);
             throw new ModelError(`Model ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} [${modelVariant.variant.mode}] for event ${message.c} ${message.ctx.i} executed abnormally with error: "${error.message}". Took ${timer.stop()} ms.`,modelVersionFormatter(modelVariant.id, modelVariant.variant.variant));            
         }          
     }
@@ -293,8 +301,8 @@ export class Automata {
                 
         return annotationsArray;            
     }
-    
-    async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profileId: string, tenantId: string}){
+
+    async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profileId: string, tenantId: string}):Promise<Models.ModelExecutionResult>{
                 
         const codeWrapper = `
         async function wrapper(){  
@@ -392,7 +400,7 @@ export class Automata {
             vm.on('console.error', logHander);
             vm.on('console.trace', logHander);
                         
-            const vmResult = await vm.run(codeWrapper);   
+            const vmResult = await vm.run(codeWrapper) as Models.ModelExecutionResult;   
             // optionally we add log output to result
             // following conditions must be met to capture execution logs
             // 1. model.message.d.e MUST be set to true
@@ -410,17 +418,27 @@ export class Automata {
                     model.logs.push(...executionLogs);
                 } 
             }
-            // clear current script info            
+            this._incrementCounter(vmResult);
             return vmResult;
         }catch(error: any){
             this._logger.error(`Error "${error.message}" executing model ${info.version} for message ${model.message.ctx.i}`, error.stack);
             // when there was an error we add execution logs regardless of debug settings of message
             model.logs.push(...executionLogs);
+            this._incrementCounter(error);
             return Promise.reject(error);
         }finally{
             // context.currentScript = {}             
+        }                
+    }
+
+    _incrementCounter(result?: Models.ModelExecutionResult, error?: Error,){
+        if(error){
+            this._counters!.errors[error.message] = this._counters!.errors[error.message] || new IntervalCounters();
+            this._counters!.errors[error.message].record(1);
+        }else if(result){
+            const code = result.termination.code;
+            this._counters!.termination[code] = this._counters!.termination[code] || new IntervalCounters();
+            this._counters!.termination[code].record(1);            
         }
-        
-        
     }
 }

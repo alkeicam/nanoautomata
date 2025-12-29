@@ -1,3 +1,4 @@
+import {IntervalCounters} from '../commons.js';
 export namespace Models {
     export interface ExecutionModel {
         name: string,
@@ -43,6 +44,16 @@ export namespace Models {
     export interface ProcessingFail {
         message: string,
         model: string
+    }
+
+    export interface ModelExecutionResult {
+        termination: {
+            code: string,
+            reason: string        
+        },
+        annotate: {
+            [key:string]: any
+        }        
     }
 }
 
@@ -97,6 +108,22 @@ export namespace Providers {
             [key:string]: any // function name, function (may be also an async function)
         }>
     }    
+}
+
+export namespace Counters{    
+    export interface ExecutionCounter{
+        termination: {            
+            // for each termination code we keep count of occurrences
+            [key:string]: IntervalCounters
+        },
+        annotate: {
+            // for each annotation code we keep count of occurrences
+            [key:string]: IntervalCounters
+        },
+        errors: {
+            [key:string]: IntervalCounters
+        }      
+    }
 }
 export namespace Nanoautomata {
     export enum ProcessingModes {
