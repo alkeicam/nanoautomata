@@ -112,6 +112,7 @@ export namespace Providers {
 
 export namespace Counters{    
     export interface ExecutionCounter{
+        instanceId: string,
         termination: {            
             // for each termination code we keep count of occurrences
             [key:string]: IntervalCounters

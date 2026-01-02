@@ -73,6 +73,7 @@ export class Automata {
         this._logsSink = {} as Nanoautomata.ExecutionLogsSink;
         this._instanceId = generateId(18);
         this._counters = {
+            instanceId: this._instanceId,
             termination: {},
             annotate: {},
             errors: {}
