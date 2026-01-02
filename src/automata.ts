@@ -61,8 +61,7 @@ export class Automata {
     _librariesProvider: Providers.ModelLibrariesProvider;
     _logsSink: Nanoautomata.ExecutionLogsSink;
 
-    _instanceId: string;
-    _logger: any;
+    _instanceId: string;    
     // 
     _counters?: Counters.ExecutionCounter;
 
@@ -81,11 +80,10 @@ export class Automata {
     }
     
 
-    static create(modelProvider: Providers.ModelProvider, apiProvider: Providers.ModelApiProvider, librariesProvider: Providers.ModelLibrariesProvider,  instanceId: string, executionLogsSink: Nanoautomata.ExecutionLogsSink,  logger: Nanoautomata.Logger){                
+    static create(modelProvider: Providers.ModelProvider, apiProvider: Providers.ModelApiProvider, librariesProvider: Providers.ModelLibrariesProvider,  instanceId: string, executionLogsSink: Nanoautomata.ExecutionLogsSink){                
         const manager = new Automata();  
         manager._instanceId = instanceId;
-        manager._modelProvider = modelProvider;  
-        manager._logger = logger || console;
+        manager._modelProvider = modelProvider;          
         manager._apiProvider = apiProvider;
         manager._librariesProvider = librariesProvider;
         manager._logsSink = executionLogsSink;
@@ -122,7 +120,7 @@ export class Automata {
      * @param {string} user originator id
      * @returns 
      */
-    async process(message: API.Message, originator: string, user: string, safeConfig?: any){
+    async process(message: API.Message, originator: string, user: string, safeConfig?: any, logger?: Nanoautomata.Logger){
         // const timer = new Stopwatch("handleMessage", true);
         if(!message.c) throw new Error(`Message code is required`);
         if(!message.ctx){
@@ -149,7 +147,7 @@ export class Automata {
             }
         }            
 
-        this._logger.log(`Processing ${message.c} ${message.ctx.i}@${message.ctx?.a} from ${originator}`); 
+        logger?.log(`Processing ${message.c} ${message.ctx.i}@${message.ctx?.a} from ${originator}`); 
         // const timer = new Stopwatch("handleMessage", true);
         ProcessorAnnotator.annotate(message, this._instanceId, Date.now());
         // get models info (without the code)
@@ -175,7 +173,7 @@ export class Automata {
         // const runtimeVariants = modelVariants.filter(item=>item.variant.mode == "runtime" && item.variant.ratio>0 && item.variant.channels.includes(message.ctx.a) && (!item.variant.events || item.variant.events.trim().length==0||item.variant.events.includes(message.c)));
         const runtimeVariants = this._filterVariants(modelVariants, message, Nanoautomata.ProcessingModes.runtime);
         
-        this._logger.log(`Qualified ${runtimeVariants.length} runtime vatiants to run for ${message.c} ${message.ctx.i}.`)
+        logger?.log(`Qualified ${runtimeVariants.length} runtime vatiants to run for ${message.c} ${message.ctx.i}.`)
 
         await this._executeVariants(runtimeVariants, message, annotations, safeConfig);
 
@@ -191,11 +189,11 @@ export class Automata {
 
         // if there are annotations added by any of the model variants send annotated message to streams
         message.ctx.ax = annotations || []                      
-        this._logger.info(`Added ${annotations.length} annotations to message ${message.ctx.i} as a result of models' processing.`);        
+        logger?.info(`Added ${annotations.length} annotations to message ${message.ctx.i} as a result of models' processing.`);        
         return message;
     }
-    
-    async _executeVariants(variants: Models.ModelVariant[], message: API.Message, annotations: API.Annotation[], safeConfig?: any){
+
+    async _executeVariants(variants: Models.ModelVariant[], message: API.Message, annotations: API.Annotation[], logger?: Nanoautomata.Logger, safeConfig?: any){
         const promises = []
         for(let i=0; i< variants.length; i++){
             const variant = variants[i];            
@@ -213,7 +211,7 @@ export class Automata {
         // in reason we have a message and model variant that failed
         const failed = resultsFromVariantsExecution.filter(result => result.status === "rejected").map(result => {return { reason: (result as PromiseRejectedResult).reason as Models.ProcessingFail}});        
         failed.forEach(fail=>{
-            this._logger.warn(`Model variant ${fail.reason.model} failed with ${fail.reason.message} for message ${message.ctx.i}`);
+            logger?.warn(`Model variant ${fail.reason.model} failed with ${fail.reason.message} for message ${message.ctx.i}`);
         })
 
         // each variant execution result is a potential array of annotations returned from variant processing
@@ -227,7 +225,7 @@ export class Automata {
      * @param {*} message target message
      * @returns array annotations (if model has added any annotations during processing)
      */
-    async _executeModel(modelVariant: Models.ModelVariant, message: API.Message, safeConfig?: any):Promise<API.Annotation[]>{
+    async _executeModel(modelVariant: Models.ModelVariant, message: API.Message, logger?: Nanoautomata.Logger, safeConfig?: any):Promise<API.Annotation[]>{
         const timer = new Stopwatch("_executeModel", true);
         // load model code
         const modelData = await this._modelProvider.getModelVariant(modelVariant.id, modelVariant.variant.variant, message.u?.tenantId, message.u?.id);
@@ -249,7 +247,7 @@ export class Automata {
         }
         try{
             const result = await this._executeScript(model, code, {version: `${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)}`, profileId: messageCopy.u!.id!, tenantId: messageCopy.u!.tenantId!});        
-            this._logger.log(`Model ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} [${modelVariant.variant.mode}] for event ${message.ctx.i} executed with termination result ${result.termination.code}. Took ${timer.stop()} ms.`);
+            logger?.log(`Model ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} [${modelVariant.variant.mode}] for event ${message.ctx.i} executed with termination result ${result.termination.code}. Took ${timer.stop()} ms.`);
 
             // send model execution logs (if any)            
             this._logsSink?.consume(model.logs)            
@@ -303,7 +301,7 @@ export class Automata {
         return annotationsArray;            
     }
 
-    async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profileId: string, tenantId: string}):Promise<Models.ModelExecutionResult>{
+    async _executeScript(model: Models.ExecutionModel, script: string, info: {version: string, profileId: string, tenantId: string}, logger?: Nanoautomata.Logger):Promise<Models.ModelExecutionResult>{
                 
         const codeWrapper = `
         async function wrapper(){  
@@ -378,8 +376,9 @@ export class Automata {
                 }).join(' ');
                 return formatted;
             }
-            const logHander = (...data:any[])=>{    
-                this._logger.log(...data);                
+            const logHander = (...data:any[])=>{   
+                const [message, ...rest] = data;
+                logger?.log(message, ...rest);                
                 // const when = new Date();
 
                 // const logFormatted = formatLog(`${when} [${when.getTime()}] `, ...data);
@@ -422,7 +421,7 @@ export class Automata {
             this._incrementCounter(vmResult);
             return vmResult;
         }catch(error: any){
-            this._logger.error(`Error "${error.message}" executing model ${info.version} for message ${model.message.ctx.i}`, error.stack);
+            logger?.error(`Error "${error.message}" executing model ${info.version} for message ${model.message.ctx.i}`, error.stack);
             // when there was an error we add execution logs regardless of debug settings of message
             model.logs.push(...executionLogs);
             this._incrementCounter(undefined, error);
