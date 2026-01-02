@@ -7,6 +7,7 @@ export namespace Models {
         config: any, // safe (read only and MAKE SURE THAT THIS IS TENANT SCOPED!!!!)
         api: any, // object holding functions that can be called from model
         libs: any // object holding third party libraries that can be called from model
+        logger: Nanoautomata.Logger,
         logs: string[] // holds execution logs
     }
 

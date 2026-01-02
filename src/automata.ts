@@ -243,6 +243,7 @@ export class Automata {
             message: messageCopy,
             api: await this._apiProvider.getApi(),
             libs: await this._librariesProvider.getLibraries(),
+            logger: logger||console,
             logs: [] // used when debugging mode is enabled and captures model execution logs
         }
         try{
