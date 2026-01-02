@@ -175,7 +175,7 @@ export class Automata {
         
         logger?.log(`Qualified ${runtimeVariants.length} runtime vatiants to run for ${message.c} ${message.ctx.i}.`)
 
-        await this._executeVariants(runtimeVariants, message, annotations, safeConfig);
+        await this._executeVariants(runtimeVariants, message, annotations, safeConfig, logger);
 
         
         
@@ -183,7 +183,7 @@ export class Automata {
         if(process.env.RUNTIME_MODEL_TESTING_ENABLED){            
             // const testVariants = modelVariants.filter(item=>item.variant.mode == "test" && item.variant.ratio>0 && item.variant.channels.includes(message.ctx.a) && (item.variant.events?.trim().length==0||item.variant.events.includes(message.c)));
             const testVariants = this._filterVariants(modelVariants, message, Nanoautomata.ProcessingModes.test);
-            await this._executeVariants(testVariants, message, annotations, safeConfig);            
+            await this._executeVariants(testVariants, message, annotations, safeConfig, logger);            
         }            
         ProcessorAnnotator.annotate(message, this._instanceId, undefined, Date.now());
 
@@ -193,14 +193,14 @@ export class Automata {
         return message;
     }
 
-    async _executeVariants(variants: Models.ModelVariant[], message: API.Message, annotations: API.Annotation[], logger?: Nanoautomata.Logger, safeConfig?: any){
+    async _executeVariants(variants: Models.ModelVariant[], message: API.Message, annotations: API.Annotation[],  safeConfig?: any, logger?: Nanoautomata.Logger){
         const promises = []
         for(let i=0; i< variants.length; i++){
             const variant = variants[i];            
                 // todo sample message using vartiant ratio
                 const random = Math.floor(Math.random() * 100);
                 if(random<=variant.variant.ratio){
-                    promises.push(this._executeModel(variant, message, safeConfig));                    
+                    promises.push(this._executeModel(variant, message, safeConfig, logger));                    
                 }                                            
         }   
         
@@ -225,7 +225,7 @@ export class Automata {
      * @param {*} message target message
      * @returns array annotations (if model has added any annotations during processing)
      */
-    async _executeModel(modelVariant: Models.ModelVariant, message: API.Message, logger?: Nanoautomata.Logger, safeConfig?: any):Promise<API.Annotation[]>{
+    async _executeModel(modelVariant: Models.ModelVariant, message: API.Message, safeConfig?: any, logger?: Nanoautomata.Logger):Promise<API.Annotation[]>{
         const timer = new Stopwatch("_executeModel", true);
         // load model code
         const modelData = await this._modelProvider.getModelVariant(modelVariant.id, modelVariant.variant.variant, message.u?.tenantId, message.u?.id);
@@ -246,7 +246,7 @@ export class Automata {
             logs: [] // used when debugging mode is enabled and captures model execution logs
         }
         try{
-            const result = await this._executeScript(model, code, {version: `${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)}`, profileId: messageCopy.u!.id!, tenantId: messageCopy.u!.tenantId!});        
+            const result = await this._executeScript(model, code, {version: `${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)}`, profileId: messageCopy.u!.id!, tenantId: messageCopy.u!.tenantId!}, logger);        
             logger?.log(`Model ${modelVersionFormatter(modelVariant.id, modelVariant.variant.variant)} [${modelVariant.variant.mode}] for event ${message.ctx.i} executed with termination result ${result.termination.code}. Took ${timer.stop()} ms.`);
 
             // send model execution logs (if any)            
